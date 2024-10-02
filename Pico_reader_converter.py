@@ -614,4 +614,3 @@ if do_write:
 if do_verbose:
     logFile.write("Closing log file\n")
     logFile.close()
-    
