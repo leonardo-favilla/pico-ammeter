@@ -28,7 +28,7 @@ parser.add_argument("-l",       "--live_plot",            dest="live_plot",     
 parser.add_argument(            "--voltage",              dest="voltage",             help="Enable live voltage plot",                                                                                                                          action="store_true")
 parser.add_argument(            "--current",              dest="current",             help="Enable live current plot",                                                                                                                          action="store_true")
 parser.add_argument(            "--ch",                   dest="ch",                  help="select channel to plot, default all channel are plotted",                                       default="G3B_G3T_G2B_G2T_G1B_G1T_DRIFT",  type=str)
-parser.add_argument("-slow",    "--slow_mode_factor",     dest="slow_mode_factor",    help="Reduce writing rate by factor N provided by user, i.e. from 400Hz to 400Hz/N)",                 default=1,                                type=int)
+parser.add_argument("-slow",    "--slow_mode_factor",     dest="slow_mode_factor",    help="Reduce writing rate by factor N provided by user, i.e. from 400Hz to 400Hz/N",                  default=1,                                type=int)
 options = parser.parse_args()
 
 # Settings #
@@ -336,7 +336,7 @@ def update_plot(fig, ax, x_data, y_data, unit):
     
     
     plt.legend(loc='center left', bbox_to_anchor=(1.01, 0.5), frameon = True) # Put a legend to the right of the current axis
-    plt.text(0.15,0.91, 'CMS', weight='bold', fontsize=15, transform=plt.gcf().transFigure)
+    # plt.text(0.15,0.91, 'CMS', weight='bold', fontsize=15, transform=plt.gcf().transFigure)
     
     """
     if unit=="A":
