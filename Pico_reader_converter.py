@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from argparse import ArgumentParser
 import numpy as np
 from statistics import mean
-import serial
+# import serial
 import json
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
