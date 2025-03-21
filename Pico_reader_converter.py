@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import ROOT
 from array import array
+from influxdb_client import InfluxDBClient, Point, WriteOptions
 
 
 plt.ion()
@@ -29,16 +30,17 @@ parser.add_argument(            "--voltage",              dest="voltage",       
 parser.add_argument(            "--current",              dest="current",             help="Enable live current plot",                                                                                                                          action="store_true")
 parser.add_argument(            "--ch",                   dest="ch",                  help="select channel to plot, default all channel are plotted",                                       default="G3B_G3T_G2B_G2T_G1B_G1T_DRIFT",  type=str)
 parser.add_argument("-slow",    "--slow_mode_factor",     dest="slow_mode_factor",    help="Reduce writing rate by factor N provided by user, i.e. from 400Hz to 400Hz/N",                  default=1,                                type=int)
+parser.add_argument(            "--grafana",              dest="grafana",             help="Enable writing to InfluxDB",                                                                                                                        action="store_true")
 options = parser.parse_args()
 
 # Settings #
-pico                = "pico5"
+pico                = "pico3"
 time_acq            = options.time_acq
 do_serial           = options.serial
 do_write            = options.write
 root_format         = options.root
 do_verbose          = options.verbose
-dataFolder          = "Data_Hangar"
+dataFolder          = "new_folder"
 outFolder           = "{}/{}".format(dataFolder, datetime.now().strftime("%d%m%y"))
 logFolder           = "{}/{}".format(outFolder, "logs")
 if root_format:
@@ -56,7 +58,16 @@ voltage_plot        = options.voltage
 current_plot        = options.current
 channels_to_plot    = options.ch.split("_")
 slow_mode_factor    = options.slow_mode_factor
+grafana             = options.grafana
 dt                  = 1e-4                                                                  # time interval corresponding to a single timestamp digit; dt is in seconds, example: dt = 0.1 msec = 1e-4 sec
+
+# InfluxDB settings
+INFLUXDB_URL    = "http://localhost:8086"
+INFLUXDB_TOKEN  = "buP3vnHzoXz-WZMPaGrlgDjXpKlyICtwSUkyDYA4ixqM1gMfXYdsuvMM0n4FWttxTYOMJwWKP7wYfzbaJQsmng=="  # Replace with your actual token
+INFLUXDB_ORG    = "organization"
+INFLUXDB_BUCKET = "bucket"
+
+
 
 # Dictionaries with calibration parameters #
 if pico == "pico5":
@@ -64,11 +75,15 @@ if pico == "pico5":
         CalVoltage = json.load(file)
     with open("./calibrations/pico5/pico5_Calibration_Current.json","r") as file:
         CalCurrent = json.load(file)
-
 elif pico == "pico4":
     with open("./calibrations/pico4/pico4_Calibration_Voltage.json","r") as file:
         CalVoltage = json.load(file)
     with open("./calibrations/pico4/pico4_Calibration_Current.json","r") as file:
+        CalCurrent = json.load(file)
+elif pico == "pico3":
+    with open("./calibrations/pico5/pico5_Calibration_Voltage.json","r") as file:
+        CalVoltage = json.load(file)
+    with open("./calibrations/pico5/pico5_Calibration_Current.json","r") as file:
         CalCurrent = json.load(file)
 
 # Connection Configuration #
@@ -77,13 +92,17 @@ if do_serial:
     if pico == "pico4":
         portNumber  = "COM7" # "COM7" per pico4, "COM8" per pico5
     elif pico == "pico5":
-        portNumber  = "COM8" 
+        portNumber  = "COM8"
+    elif pico == "pico3":
+        portNumber  = "COM7"
     baudrate        = 2_000_000
 else:
     if pico == "pico4":
         hostName    = "picouart04.na.infn.it" # admin=admin, password=PASSWORD
     elif pico == "pico5":
         hostName    = "picouart05.na.infn.it" # admin=admin, password=PASSWORD
+    elif pico == "pico3":
+        hostName    = "picouart03.na.infn.it"
     portNumber      = 23
     baudrate        = None
 
@@ -330,7 +349,7 @@ def update_plot(fig, ax, x_data, y_data, unit):
             y_data[ch]  = y_data[ch][-100:]
             x_data      = x_data[-100:]
 
-        #ax.plot(x_data, y_data[ch], label= ch+"      "+r""+label+" = %.2f $nA$" % (y_data[ch][-1]*10**9)) # for current always in nA
+        # ax.plot(x_data, y_data[ch], label= ch+"      "+r""+label+" = %.2f $nA$" % (y_data[ch][-1]*10**9)) # for current always in nA
         last_val =  y_data[ch][-1]
         ax.plot(x_data, y_data[ch], label=ch+"    {}".format(fmt(last_val)))
     
@@ -360,6 +379,28 @@ def update_plot(fig, ax, x_data, y_data, unit):
     plt.draw()
     plt.pause(0.001)
     ax.cla()
+
+
+
+def send_to_influxdb(url, token, org, bucket, time_stamp, measurement_name, fields):
+    client      = InfluxDBClient(url=url, token=token, org=org)
+    write_api   = client.write_api(write_options=WriteOptions(batch_size=1))
+
+    # Create a single InfluxDB point with multiple fields (one per channel)
+    point       = Point(measurement_name).field(fields[0], fields[1]).time(time_stamp, write_precision="s")
+    # point.field(fields[0], fields[1])
+    # for channel, current in fields.items():
+    #     point   = point.field(channel, current)
+
+    # Write to InfluxDB
+    write_api.write(bucket=bucket, record=point)
+    print(f"Writing to InfluxDB: {point.to_line_protocol()}")
+    write_api.close()
+    client.close()
+
+if grafana:
+    client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
+    write_api = client.write_api(write_options=WriteOptions(batch_size=1))
 
 ####################
 # Data acquisition #
@@ -411,6 +452,12 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         # s.shutdown(socket.SHUT_RDWR)
         s.close()
         s = None
+
+        # Close InfluxDB connection properly
+        if grafana:
+            write_api.close()
+            client.close()
+            print("InfluxDB connection closed.")
 
     else:
         s = None
@@ -486,7 +533,11 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
             count_time_flip += 1
         last_time_flag       = time_flag
         time_s               = timedelta(seconds=time_stamp*dt)
-
+        exact_time_s         = int(t0 + time_s.total_seconds())
+        exact_time_ms        = int((t0 + time_s.total_seconds())*1e3)
+        exact_time_us        = int((t0 + time_s.total_seconds())*1e6)
+        # print(exact_time_s)
+        # print(int(time.time()))
         # print(f"timestamp read is:                             {labels[0]}  {values[0]} ---> {time_stamp} ---> {time_s}")
         # print(f"time_flag has changed {count_time_flip} times!\n")
         ###############################
@@ -520,6 +571,56 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         elif (b'p' in labels) or (b'P' in labels) or (b'm' in labels) or (b'M' in labels):
             pass
 
+        
+        ########################
+        ### SEND TO INFLUXDB ###
+        ########################
+        if grafana:
+            # point = Point("current_measurement").field("current", curr[0]).time(exact_time_us, write_precision="us")
+            # point = Point("current_measurement").field("current_G3B", curr[0]).field("current_G3T", curr[1]).field("current_G2B", curr[2]).field("current_G2T", curr[3]).field("current_G1B", curr[4]).field("current_G1T", curr[5]).field("current_DRIFT", curr[6]).time(exact_time_s, write_precision="s")
+
+
+            # point = Point("current_measurement").tag("channel", "G3B").field("current", curr[0]).time(exact_time_s, write_precision="s")
+            if nev%10 == 0:
+                # point_I = Point("current_measurement").field("I_G3B", curr[0]).field("I_G3T", curr[1]).field("I_G2B", curr[2]).field("I_G2T", curr[3]).field("I_G1B", curr[4]).field("I_G1T", curr[5]).field("I_DRIFT", curr[6]).time(exact_time_s, write_precision="s")
+                point_I = Point("current_measurement").field("I_G3B", curr[0]).field("I_G3T", curr[1]).field("I_G2B", curr[2]).field("I_G2T", curr[3]).field("I_G1B", curr[4]).field("I_G1T", curr[5]).field("I_DRIFT", curr[6]).time(exact_time_ms, write_precision="ms")
+
+                # print(f"Writing to InfluxDB: {point.to_line_protocol()}")
+                write_api.write(bucket=INFLUXDB_BUCKET, record=point_I)
+
+
+                point_V = Point("voltage_measurement").field("V_G3B", volt[0]).field("V_G3T", volt[1]).field("V_G2B", volt[2]).field("V_G2T", volt[3]).field("V_G1B", volt[4]).field("V_G1T", volt[5]).field("V_DRIFT", volt[6]).time(exact_time_s, write_precision="s")
+
+                # print(f"Writing to InfluxDB: {point.to_line_protocol()}")
+                write_api.write(bucket=INFLUXDB_BUCKET, record=point_V)
+
+
+                point_T = Point("temperature_measurement").field("T_G3B", temp[0]).field("T_G3T", temp[1]).field("T_G2B", temp[2]).field("T_G2T", temp[3]).field("T_G1B", temp[4]).field("T_G1T", temp[5]).field("T_DRIFT", temp[6]).time(exact_time_s, write_precision="s")
+
+                # print(f"Writing to InfluxDB: {point.to_line_protocol()}")
+                write_api.write(bucket=INFLUXDB_BUCKET, record=point_T)
+
+            # send_to_influxdb(
+            #     url=INFLUXDB_URL,
+            #     token=INFLUXDB_TOKEN,
+            #     org=INFLUXDB_ORG,
+            #     bucket=INFLUXDB_BUCKET,
+            #     time_stamp=time_stamp,
+            #     measurement_name="current_measurement",
+            #     # fields={channel: value for channel, value in zip(channel_map, curr)}
+            #     fields=["current", curr[6]]
+            # )
+
+            # send_to_influxdb(
+            #     url=INFLUXDB_URL,
+            #     token=INFLUXDB_TOKEN,
+            #     org=INFLUXDB_ORG,
+            #     bucket=INFLUXDB_BUCKET,
+            #     time_stamp=time_stamp,
+            #     measurement_name="voltage_measurements",
+            #     fields={channel: value for channel, value in zip(channel_map, volt)}
+            # )
+
 
 
         if live_plot:
@@ -534,7 +635,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                     x_data.append(time_stamp)
                     for ch in channels_to_plot:
                         y_data[ch].append(curr[channel_map.index(ch)])
-                #print(len(x_data), len(y_data[ch]))
+                # print(len(x_data), len(y_data[ch]))
                 update_plot(fig, ax, x_data, y_data, unit=unit)
             
         line_to_write = separator.join([str(x) for x in [time_stamp] + [time_s] + curr + volt + temp + labels])
@@ -587,6 +688,11 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         # print("not matching frame: ", data)
         nev_notmatching += 1
 
+
+if grafana:
+    write_api.flush()
+    write_api.close()
+    client.close()
 
 
 if live_plot:

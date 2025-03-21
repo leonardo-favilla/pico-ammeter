@@ -36,7 +36,7 @@ if do_serial:
     portNumber  = "COM8" # "COM7" per pico4, "COM8" per pico5
     baudrate    = 2_000_000
 else:
-    hostName    = "picouart05.na.infn.it" # admin=admin, password=PASSWORD
+    hostName    = "picouart03.na.infn.it" # admin=admin, password=PASSWORD
     portNumber  = 23
     baudrate    = None
 
@@ -129,7 +129,7 @@ while time.time() - t0 <= time_acq:
 
             if (b"J" in line) or (b"D" in line):  # check if the data must be trashed (if found a "J" or a "D")
                 corrupted_data = True
-            #print(line)
+            print(line)
             labels = [x for i, x in enumerate(line) if i % 2 == 0]  # get the labels
             values = [x for i, x in enumerate(line) if i % 2 != 0]  # get the values
             if nev == 0:
