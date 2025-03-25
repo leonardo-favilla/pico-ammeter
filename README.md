@@ -15,10 +15,6 @@ The main variables you would need to change are:
     https://github.com/leonardo-favilla/pico-ammeter/blob/6eb37af661189bfb6725cae4b090d31f44daafab/Pico_reader_converter.py#L41
     `dataFolder` will be a folder contained at the same level as `Pico_reader_converter.py` script; how the data are actually stored will be explained afterward.
 
-    ### Nota Bene 1
-    If you don't have `ROOT` installed, you need to comment out the following line:
-    https://github.com/leonardo-favilla/pico-ammeter/blob/6eb37af661189bfb6725cae4b090d31f44daafab/Pico_reader_converter.py#L14
-
 ## Main commands
 Here we'll try to give a comprehensive and quick overview of the main commands that you can use. The script `Pico_reader_converter.py` comes along with several arguments that we can pass to it, in order to properly use it in several situations. The main flagse are:
 1. `-t <acq_time>` sets the acquisition time in seconds.
