@@ -9,7 +9,7 @@ You can can connect to PICO either remotly, paying attention to be on the same n
 ## What you would need to change in the code
 The main variables you would need to change are:
 1. which PICO version you are handling:
-    https://github.com/leonardo-favilla/pico-ammeter/blob/35f4a2d747ec5185eafbdf59da6fb3b35a4198c3/Pico_reader_converter.py#L37C1-L38C1
+    https://github.com/leonardo-favilla/pico-ammeter/blob/35f4a2d747ec5185eafbdf59da6fb3b35a4198c3/Pico_reader_converter.py#L37
     Up to now, only "pico3", "pico4" and "pico5" are available.
 2. in which folder you want data to be stored:
     https://github.com/leonardo-favilla/pico-ammeter/blob/35f4a2d747ec5185eafbdf59da6fb3b35a4198c3/Pico_reader_converter.py#L43
