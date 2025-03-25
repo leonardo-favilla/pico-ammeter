@@ -9,10 +9,10 @@ You can can connect to PICO either remotly, paying attention to be on the same n
 ## What you would need to change in the code
 The main variables you would need to change are:
 1. which PICO version you are handling:
-    https://github.com/leonardo-favilla/pico-ammeter/blob/6eb37af661189bfb6725cae4b090d31f44daafab/Pico_reader_converter.py#L35
-    Up to now, only "pico4" and "pico5" are available.
+    https://github.com/leonardo-favilla/pico-ammeter/blob/35f4a2d747ec5185eafbdf59da6fb3b35a4198c3/Pico_reader_converter.py#L37C1-L38C1
+    Up to now, only "pico3", "pico4" and "pico5" are available.
 2. in which folder you want data to be stored:
-    https://github.com/leonardo-favilla/pico-ammeter/blob/6eb37af661189bfb6725cae4b090d31f44daafab/Pico_reader_converter.py#L41
+    https://github.com/leonardo-favilla/pico-ammeter/blob/35f4a2d747ec5185eafbdf59da6fb3b35a4198c3/Pico_reader_converter.py#L43
     `dataFolder` will be a folder contained at the same level as `Pico_reader_converter.py` script; how the data are actually stored will be explained afterward.
 
 ## Main commands
@@ -31,7 +31,7 @@ Here we'll try to give a comprehensive and quick overview of the main commands t
 
     ### Nota Bene 2
     Pay attention that the code in the following line has not been implemented yet in the code, so the flag does not bring you anything else but an error!
-    https://github.com/leonardo-favilla/pico-ammeter/blob/6eb37af661189bfb6725cae4b090d31f44daafab/Pico_reader_converter.py#L30
+    https://github.com/leonardo-favilla/pico-ammeter/blob/35f4a2d747ec5185eafbdf59da6fb3b35a4198c3/Pico_reader_converter.py#L31
 
 At this point, let's see the actual commands to use and their purpose:
 1. To acquire data with PICO for `10` seconds:
