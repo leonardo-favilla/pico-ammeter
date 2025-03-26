@@ -101,7 +101,7 @@ else:
     if pico == "pico4":
         hostName    = "" # admin=admin, password=PASSWORD
     elif pico == "pico5":
-        hostName    = "GEM-PICO05" # admin=admin, password=PASSWORD
+        hostName    = "gem-pico05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
         hostName    = ""
     portNumber      = 23
