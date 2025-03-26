@@ -19,11 +19,12 @@ from influxdb_client import InfluxDBClient, Point, WriteOptions
 plt.ion()
 
 # Arguments #
-parser = ArgumentParser(usage="python3 Pico_reader_converter.py -t <time_acq> -w -v") # -s if serial, -r if .root format, -l if live plot
+parser = ArgumentParser(usage="python3 Pico_reader_converter.py -t <time_acq> -w -f ./new_folder") # -s if serial, -r if .root format, -l if live plot
 parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=10,                               type=int)
 parser.add_argument("-s",       "--serial",               dest="serial",              help="Enable serial connection",                                                                                                                          action="store_true")
 parser.add_argument("-w",       "--write",                dest="write",               help="Enable writing to file",                                                                                                                            action="store_true")
 parser.add_argument("-r",       "--root",                 dest="root",                help="Write in .root format, default in .txt",                                                                                                            action="store_true")
+parser.add_argument("-f",       "--folder",               dest="folder",              help="Folder where to save the data",                                                                 default="./picoData",                     type=str)
 parser.add_argument("-v",       "--verbose",              dest="verbose",             help="Enable verbose mode",                                                                                                                               action="store_true")
 parser.add_argument("-l",       "--live_plot",            dest="live_plot",           help="Enable live plot",                                                                                                                                  action="store_true")
 parser.add_argument(            "--voltage",              dest="voltage",             help="Enable live voltage plot",                                                                                                                          action="store_true")
@@ -34,13 +35,13 @@ parser.add_argument(            "--grafana",              dest="grafana",       
 options = parser.parse_args()
 
 # Settings #
-pico                = "pico3"
+pico                = "pico5"
 time_acq            = options.time_acq
 do_serial           = options.serial
 do_write            = options.write
 root_format         = options.root
 do_verbose          = options.verbose
-dataFolder          = "new_folder"
+dataFolder          = options.folder
 outFolder           = "{}/{}".format(dataFolder, datetime.now().strftime("%d%m%y"))
 logFolder           = "{}/{}".format(outFolder, "logs")
 if root_format:
@@ -100,7 +101,7 @@ else:
     if pico == "pico4":
         hostName    = "picouart04.na.infn.it" # admin=admin, password=PASSWORD
     elif pico == "pico5":
-        hostName    = "picouart05.na.infn.it" # admin=admin, password=PASSWORD
+        hostName    = "GEM-PICO05" # "picouart05.na.infn.it" # admin=admin, password=PASSWORD
     elif pico == "pico3":
         hostName    = "picouart03.na.infn.it"
     portNumber      = 23

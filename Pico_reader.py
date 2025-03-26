@@ -22,7 +22,7 @@ time_acq        = options.time_acq
 do_serial       = options.serial
 do_write        = options.write
 do_verbose      = options.verbose
-dataFolder      = "Data_Hangar"
+dataFolder      = "/eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/"
 outFolder       = "{}/{}".format(dataFolder, datetime.now().strftime("%d%m%y"))
 logFolder       = "{}/{}".format(outFolder, "logs")
 outFilename     = "{}.txt".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))  # F=Microsecond
@@ -36,7 +36,7 @@ if do_serial:
     portNumber  = "COM8" # "COM7" per pico4, "COM8" per pico5
     baudrate    = 2_000_000
 else:
-    hostName    = "picouart03.na.infn.it" # admin=admin, password=PASSWORD
+    hostName    = "GEM-PICO05" # admin=admin, password=PASSWORD
     portNumber  = 23
     baudrate    = None
 
