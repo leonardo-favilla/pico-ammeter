@@ -2,9 +2,11 @@ import time
 import subprocess
 
 # Configuration
-minutes         = 5                                                             # Total interval time in minutes
-partitions      = 4                                                             # Number of partitions per interval
+run             = 2                                                             # Run number
+minutes         = 10                                                            # Total interval time in minutes
+partitions      = 1                                                             # Number of partitions per interval
 fileFolder      = "/eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData"       # Folder to save the data
+logFile         = f"log_MagnetTest3_Apr2025_run{str(run)}.log"                  # Log file
 
 seconds         = minutes * 60                                                  # Total interval time in seconds
 partition_time  = seconds / partitions                                          # Divide execution time among partitions
@@ -21,18 +23,25 @@ while counter <= partitions:
         "-f", fileFolder
     ]
     
-    with open("log_pico.log", "a") as log_file:
-        subprocess.run(command, stdout=log_file, stderr=log_file)
+    with open(logFile, "a") as f:
+        subprocess.run(command, stdout=f, stderr=f)
     
     tf_         = time.time()
-    print(f"Partition {counter} finished in {tf_ - t0_} seconds.")
+    print(f"Partition {counter} finished in {tf_-t0_} seconds.")
     counter    += 1
 tf              = time.time()
+
+files_list      = []
+with open(logFile, "r") as f:
+    for line in f:
+        if "Closing output file" in line:
+            files_list.append(line.split()[-1])
+
 
 print("Data acquisition finished!")
 print("Summary:")
 print(f"Total time: {tf-t0} seconds")
 print(f"Partitions: {partitions}")
 print(f"Folder:     {fileFolder}")
-print(f"Log file:   log_pico.log")
-print(f"Files: ")
+print(f"Log file:   {logFile}")
+print(f"Files:      {files_list}")
