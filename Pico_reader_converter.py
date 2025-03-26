@@ -99,11 +99,11 @@ if do_serial:
     baudrate        = 2_000_000
 else:
     if pico == "pico4":
-        hostName    = "picouart04.na.infn.it" # admin=admin, password=PASSWORD
+        hostName    = "" # admin=admin, password=PASSWORD
     elif pico == "pico5":
-        hostName    = "GEM-PICO05" # "picouart05.na.infn.it" # admin=admin, password=PASSWORD
+        hostName    = "GEM-PICO05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
-        hostName    = "picouart03.na.infn.it"
+        hostName    = ""
     portNumber      = 23
     baudrate        = None
 
