@@ -11,9 +11,12 @@ import serial
 import json
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from matplotlib.ticker import EngFormatter
+from matplotlib.widgets import Button
+from matplotlib.gridspec import GridSpec
 import ROOT
 from array import array
-from influxdb_client import InfluxDBClient, Point, WriteOptions
+#from influxdb_client import InfluxDBClient, Point, WriteOptions
 
 
 plt.ion()
@@ -29,7 +32,7 @@ parser.add_argument("-v",       "--verbose",              dest="verbose",       
 parser.add_argument("-l",       "--live_plot",            dest="live_plot",           help="Enable live plot",                                                                                                                                  action="store_true")
 parser.add_argument(            "--voltage",              dest="voltage",             help="Enable live voltage plot",                                                                                                                          action="store_true")
 parser.add_argument(            "--current",              dest="current",             help="Enable live current plot",                                                                                                                          action="store_true")
-parser.add_argument(            "--ch",                   dest="ch",                  help="select channel to plot, default all channel are plotted",                                       default="G3B_G3T_G2B_G2T_G1B_G1T_DRIFT",  type=str)
+parser.add_argument(            "--ch",                   dest="ch",                  help="select channel to plot, default all channel are plotted",                                       default="DRIFT_G1T_G1B_G2T_G2B_G3T_G3B",  type=str)
 parser.add_argument("-slow",    "--slow_mode_factor",     dest="slow_mode_factor",    help="Reduce writing rate by factor N provided by user, i.e. from 400Hz to 400Hz/N",                  default=1,                                type=int)
 parser.add_argument(            "--grafana",              dest="grafana",             help="Enable writing to InfluxDB",                                                                                                                        action="store_true")
 options = parser.parse_args()
@@ -101,7 +104,7 @@ else:
     if pico == "pico4":
         hostName    = "" # admin=admin, password=PASSWORD
     elif pico == "pico5":
-        hostName    = "gem-pico05" # admin=admin, password=PASSWORD
+        hostName    = "GEM-PICO05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
         hostName    = ""
     portNumber      = 23
@@ -310,77 +313,82 @@ temp    = list(np.zeros(7))
 
 # plotting
 if live_plot:
-    fig,ax = plt.subplots(figsize=(10,6))
-    ax.set_xlabel("Time")
+    
+    fig = plt.figure(figsize=(12, 6))
+    gs = GridSpec(1, 2, width_ratios=[4, 1], figure=fig)
+
+    ax = fig.add_subplot(gs[0])
+    ax.set_xlabel("Time", fontsize=12, weight='bold', labelpad=15)
     if voltage_plot: 
-        ax.set_ylabel("Voltage [V]")
+        ax.set_ylabel("Voltage [V]", fontsize=12, weight='bold', labelpad=20)
     if current_plot:
-        ax.set_ylabel("Current [A]")
+        ax.set_ylabel("Current [A]", fontsize=12, weight='bold', labelpad=20)
     ax.grid(True)
     x_data = []
     y_data = {ch: [] for ch in channels_to_plot}
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])  # Shrink current axis by 20%    
     
+    ax.set_title("PICO5", fontsize=20)
+    cms_text = ax.text(0.15, 0.91, 'CMS', weight='bold', fontsize=16, transform=fig.transFigure)
 
-def update_plot(fig, ax, x_data, y_data, unit):
-    image = False
-
-    if image:
-        img = plt.imread("INFN.jpg") 
-        x0, y0 = ax.transData.transform((1.01,0.7))
-        ax.figure.figimage(img, x0, y0, alpha=0.5)
+    legend_ax = fig.add_subplot(gs[1])
+    legend_ax.axis("off")
     
-    plt.title("PICO",size=20)
-    if unit=="V":
-        label = "V" 
-        ax.set_ylabel("Voltage")
-    elif unit=="A":
-        label = "i" 
-        ax.set_ylabel("Current")
-    ax.set_xlabel("Timestamp")
-    ax.yaxis.set_major_formatter(ticker.EngFormatter(unit=unit))
+    button_ax = fig.add_axes([0.8, 0.1, 0.07, 0.06])  # Adjusted Button position
+    stop_button = Button(button_ax, "STOP", color='red', hovercolor='lightcoral')
+    stop_button.label.set_color('white')
+    stop_button.label.set_fontsize(13)  # Font più grande
+    stop_button.label.set_weight('bold')  # Testo in grassetto
+    stop_button.label.set_fontname('Arial')  # Font personalizzato
+    stop_execution = False
 
-    style = ticker.EngFormatter(unit=unit, places = 2, sep=" ") # formatter for the measurements in the legend 
-    g = lambda x,pos : "{}".format(style(x,pos)) 
+    def stop(event):
+        global stop_execution
+        stop_execution = True
+        print("Execution stopped by the user.")
+
+    stop_button.on_clicked(stop)
+
+def update_plot(fig, ax, x_data, y_data, unit, legend_ax):
+    style = ticker.EngFormatter(unit=unit, places=2, sep=" ")  
+    g = lambda x, pos: "{}".format(style(x, pos))
     fmt = ticker.FuncFormatter(g)
-    
-    for ch in channels_to_plot:
-        if len(y_data[ch])>=100: 
-            y_data[ch]  = y_data[ch][-100:]
-            x_data      = x_data[-100:]
 
-        # ax.plot(x_data, y_data[ch], label= ch+"      "+r""+label+" = %.2f $nA$" % (y_data[ch][-1]*10**9)) # for current always in nA
-        last_val =  y_data[ch][-1]
-        ax.plot(x_data, y_data[ch], label=ch+"    {}".format(fmt(last_val)))
+    for ch in channels_to_plot:
+        if len(y_data[ch]) >= 100: 
+            y_data[ch] = y_data[ch][-100:]
+            x_data = x_data[-100:]
+
+        if len(ax.lines) > channels_to_plot.index(ch):
+            line = ax.lines[channels_to_plot.index(ch)]
+            line.set_xdata(x_data)
+            line.set_ydata(y_data[ch])
+            
+            last_value = y_data[ch][-1] if y_data[ch] else 0
+            label = f"{ch}: {fmt(last_value, None)}"
+            line.set_label(label)
+        else:
+            last_value = y_data[ch][-1] if y_data[ch] else 0
+            label = f"{ch}: {fmt(last_value, None)}"
+            ax.plot(x_data, y_data[ch], label=label)
+
+    legend_ax.clear()
+    legend_ax.axis("off")
+    handles, labels = ax.get_legend_handles_labels()  
+    legend = legend_ax.legend(handles, labels, loc='center', frameon=True, fontsize=12)
+
+    for line in legend.get_lines():
+        line.set_linewidth(2.5)
     
-    
-    plt.legend(loc='center left', bbox_to_anchor=(1.01, 0.5), frameon = True) # Put a legend to the right of the current axis
-    # plt.text(0.15,0.91, 'CMS', weight='bold', fontsize=15, transform=plt.gcf().transFigure)
-    
-    """
-    if unit=="A":
-        plt.text(0.875, 0.385, r"$I$ = %.2f $nA$" % (y_data["DRIFT"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.419, r"$I$ = %.2f $nA$" % (y_data["G1T"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4525, r"$I$ = %.2f $nA$" % (y_data["G1B"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4875, r"$I$ = %.2f $nA$" % (y_data["G2T"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.525, r"$I$ = %.2f $nA$" % (y_data["G2B"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.56, r"$I$ = %.2f $nA$" % (y_data["G3T"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.595, r"$I$ = %.2f $nA$" % (y_data["G3B"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-    elif unit=="V":
-        plt.text(0.875, 0.385, r"$V$ = %.2f $V$" % (y_data["DRIFT"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.419, r"$V$ = %.2f $V$" % (y_data["G1T"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4525, r"$V$ = %.2f $V$" % (y_data["G1B"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4875, r"$V$ = %.2f $V$" % (y_data["G2T"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.525, r"$V$ = %.2f $V$" % (y_data["G2B"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.56, r"$V$ = %.2f $V$" % (y_data["G3T"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.595, r"$V$ = %.2f $V$" % (y_data["G3B"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-    """
-    ax.grid(True, alpha=0.35)
+    legend.get_frame().set_facecolor('linen')
+    legend.get_frame().set_edgecolor('black')
+    legend.get_frame().set_alpha(0.8) 
+    legend.get_frame().set_boxstyle("round,pad=0.3")
+
+    ax.yaxis.set_major_formatter(style)
+    ax.relim()
+    ax.autoscale_view()
     plt.draw()
     plt.pause(0.001)
-    ax.cla()
-
 
 
 def send_to_influxdb(url, token, org, bucket, time_stamp, measurement_name, fields):
@@ -424,6 +432,9 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
     # if len(bytes):
         # print(f"bytes in memory {len(bytes)}:    {bytes}")
     # print(f"number of bytes in memory:       {len(bytes)}")
+    if stop_execution:  # Controlla se l'utente ha premuto il pulsante
+        print("\nExiting...\n")
+        break
 
 
     nev_while += 1
@@ -637,7 +648,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                     for ch in channels_to_plot:
                         y_data[ch].append(curr[channel_map.index(ch)])
                 # print(len(x_data), len(y_data[ch]))
-                update_plot(fig, ax, x_data, y_data, unit=unit)
+                update_plot(fig, ax, x_data, y_data, unit=unit, legend_ax=legend_ax)
             
         line_to_write = separator.join([str(x) for x in [time_stamp] + [time_s] + curr + volt + temp + labels])
         if do_verbose:
