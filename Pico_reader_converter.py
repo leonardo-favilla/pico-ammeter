@@ -333,12 +333,12 @@ if live_plot:
     legend_ax = fig.add_subplot(gs[1])
     legend_ax.axis("off")
     
-    button_ax = fig.add_axes([0.8, 0.1, 0.07, 0.06])  # Adjusted Button position
+    ### STOP BUTTON ###
+    button_ax = fig.add_axes([0.8, 0.15, 0.07, 0.06])  # Adjusted Button position
     stop_button = Button(button_ax, "STOP", color='red', hovercolor='lightcoral')
     stop_button.label.set_color('white')
-    stop_button.label.set_fontsize(13)  # Font più grande
-    stop_button.label.set_weight('bold')  # Testo in grassetto
-    stop_button.label.set_fontname('Arial')  # Font personalizzato
+    stop_button.label.set_fontsize(13)
+    stop_button.label.set_weight('bold')
     stop_execution = False
 
     def stop(event):
@@ -347,6 +347,45 @@ if live_plot:
         print("Execution stopped by the user.")
 
     stop_button.on_clicked(stop)
+
+    ### PAUSE BUTTON ###
+
+    paused = False
+
+    pause_button_ax = fig.add_axes([0.8, 0.05, 0.07, 0.06])
+    pause_button = Button(pause_button_ax, 'PAUSE', color='blue', hovercolor='lightblue')
+    pause_button.label.set_color('white')
+    pause_button.label.set_fontsize(13)
+    pause_button.label.set_weight('bold')
+    
+    def toggle_pause(event):        
+        global paused
+        paused = not paused
+    
+    pause_button.on_clicked(toggle_pause)
+
+    #### SAVE BUTTON ####
+    save_button_ax = fig.add_axes([0.8, 0.25, 0.07, 0.06])  # Posizione del pulsante
+    save_button = Button(save_button_ax, 'SAVE', color='green', hovercolor='lightgreen')
+    save_button.label.set_color('white')
+    save_button.label.set_fontsize(13)
+    save_button.label.set_weight('bold')
+
+    def save_screenshot(event):
+        screenshot_folder = "./screenshots"
+        if not os.path.exists(screenshot_folder):
+            os.makedirs(screenshot_folder)  
+
+        utc_time = datetime.utcfromtimestamp(t0 + time_stamp * dt)  # Convert to UTC time
+        screenshot_filename = os.path.join(
+            screenshot_folder,
+            f"screenshot_{utc_time.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+        )
+
+        fig.savefig(screenshot_filename, dpi=300)
+        print(f"Screenshot saved: {screenshot_filename}")
+
+    save_button.on_clicked(save_screenshot)
 
 def update_plot(fig, ax, x_data, y_data, unit, legend_ax):
     style = ticker.EngFormatter(unit=unit, places=2, sep=" ")  
@@ -364,10 +403,12 @@ def update_plot(fig, ax, x_data, y_data, unit, legend_ax):
             line.set_ydata(y_data[ch])
             
             last_value = y_data[ch][-1] if y_data[ch] else 0
+            #label = f"{ch}: {last_value * 1e9:.2f} nA"
             label = f"{ch}: {fmt(last_value, None)}"
             line.set_label(label)
         else:
             last_value = y_data[ch][-1] if y_data[ch] else 0
+            #label = f"{ch}: {last_value * 1e9:.2f} nA"
             label = f"{ch}: {fmt(last_value, None)}"
             ax.plot(x_data, y_data[ch], label=label)
 
@@ -382,7 +423,7 @@ def update_plot(fig, ax, x_data, y_data, unit, legend_ax):
     legend.get_frame().set_facecolor('linen')
     legend.get_frame().set_edgecolor('black')
     legend.get_frame().set_alpha(0.8) 
-    legend.get_frame().set_boxstyle("round,pad=0.3")
+    legend.get_frame().set_boxstyle("round,pad=1")
 
     ax.yaxis.set_major_formatter(style)
     ax.relim()
@@ -436,6 +477,9 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         print("\nExiting...\n")
         break
 
+    if paused:
+        plt.pause(0.1)
+        continue
 
     nev_while += 1
     if (time.time() - t0 <= time_acq/time_divider):
