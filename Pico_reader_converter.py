@@ -18,6 +18,7 @@ from influxdb_client import InfluxDBClient, Point, WriteOptions
 
 plt.ion()
 
+
 # Arguments #
 parser = ArgumentParser(usage="python3 Pico_reader_converter.py -t <time_acq> -w -f ./new_folder") # -s if serial, -r if .root format, -l if live plot
 parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=10,                               type=int)
