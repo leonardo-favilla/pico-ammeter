@@ -773,6 +773,9 @@ if do_write:
         outFile.Close()
     else:
         outFile.close()
+    size_MB     = round(os.path.getsize(f"{outFolder}/{outFilename}") / 1e6, 2)
+    print(f"File size:                                   {size_MB} MB")
+
 
 # Close log file
 if do_verbose:
