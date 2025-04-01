@@ -64,6 +64,9 @@ channels_to_plot    = options.ch.split("_")
 slow_mode_factor    = options.slow_mode_factor
 grafana             = options.grafana
 dt                  = 1e-4                                                                  # time interval corresponding to a single timestamp digit; dt is in seconds, example: dt = 0.1 msec = 1e-4 sec
+stop_execution      = False
+paused              = False
+
 
 # InfluxDB settings
 INFLUXDB_URL    = "http://localhost:8086"
@@ -339,7 +342,6 @@ if live_plot:
     stop_button.label.set_color('white')
     stop_button.label.set_fontsize(13)
     stop_button.label.set_weight('bold')
-    stop_execution = False
 
     def stop(event):
         global stop_execution
@@ -349,9 +351,6 @@ if live_plot:
     stop_button.on_clicked(stop)
 
     ### PAUSE BUTTON ###
-
-    paused = False
-
     pause_button_ax = fig.add_axes([0.8, 0.05, 0.07, 0.06])
     pause_button = Button(pause_button_ax, 'PAUSE', color='blue', hovercolor='lightblue')
     pause_button.label.set_color('white')
