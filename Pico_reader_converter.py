@@ -182,7 +182,10 @@ def correct_curr(values, CalCurrent, labels):
         elif labels[i] == b'I' :
             corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
         elif labels[i] == b'i' :
-            corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+            # corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+            with open("./calibrations/pico5/Calibration_no_FFT+1nA.json","r") as file:
+                CalCurrent_nA = json.load(file)
+            corr_val.append(values[i] * CalCurrent_nA[ch]["m"] + CalCurrent_nA[ch]["q"])
         else:
             corr_val.append(values[i])
     return corr_val
