@@ -714,6 +714,8 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                 nev_written += 1
                 if nev_written==1:
                     print(f"First event written to file occurs at nev = {nev}")
+                    id do_verbose:
+                        logFile.write(f"First event written to file occurs at nev = {nev}\n")
                 write_event_to_file(time_stamp=time_stamp,
                                     curr=curr,
                                     volt=volt,
