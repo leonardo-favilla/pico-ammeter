@@ -120,7 +120,6 @@ if do_write:
             if not os.path.exists(logFolder):
                 os.makedirs(logFolder)
             # Create log file
-            print("Creating log file {}/{}".format(logFolder, logFilename))
             logFile = open(os.path.join(logFolder, logFilename), "w")
             logFile.write("Folder {} already exists\n".format(dataFolder))
         pass
@@ -129,7 +128,6 @@ if do_write:
             if not os.path.exists(logFolder):
                 os.makedirs(logFolder)
             # Create log file
-            print("Creating log file {}/{}".format(logFolder, logFilename))
             logFile = open(os.path.join(logFolder, logFilename), "w")
             logFile.write("Creating folder {}\n".format(dataFolder))
         os.makedirs(dataFolder)
@@ -142,8 +140,6 @@ if do_write:
         if do_verbose:
             logFile.write("Creating folder {}\n".format(outFolder))
         os.makedirs(outFolder)
-
-
 
 # UTILS #
 def connect_to_pico(do_serial, host, port, baud):
@@ -239,9 +235,10 @@ def write_event_to_file(time_stamp, curr, volt, temp, labels, root_format, outFi
 s = connect_to_pico(do_serial=do_serial, host=hostName, port=portNumber, baud=baudrate)  # connect to the server
 if s:
     print("---------------------- Connected to PICO ----------------------")
-    if do_verbose:
-        logFile.write("Writing data to file {}/{}".format(outFolder, outFilename))
     if do_write:
+        if do_verbose:
+            print(f"Creating log file {logFolder}/{logFilename}")
+            logFile.write("Writing data to file {}/{}\n".format(outFolder, outFilename))
         print("Writing data to file {}/{}".format(outFolder, outFilename))
         if root_format:
             outFile             = ROOT.TFile("{}/{}".format(outFolder, outFilename), "RECREATE")
@@ -308,8 +305,8 @@ else:
     print("Connection to PICO failed")
     sys.exit()
 
-if do_verbose:
-    logFile.write("--------------------------------------------------")
+# if do_verbose:
+#     logFile.write("--------------------------------------------------")
 t0      = time.time()
 curr    = list(np.zeros(7))
 volt    = list(np.zeros(7))
@@ -572,11 +569,11 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         values = [x for i, x in enumerate(line) if i % 2 != 0]  # get the values
         
 
-        if do_verbose:
-            logFile.write("Ev. number:                                      {}\n".format(nev))
-            logFile.write(str(line) + "\n")
-            logFile.write("labels:                                          {}\n".format(labels))
-            logFile.write("values:                                          {}\n".format(values))
+        # if do_verbose:
+        #     logFile.write("Ev. number:                                      {}\n".format(nev))
+        #     logFile.write(str(line) + "\n")
+        #     logFile.write("labels:                                          {}\n".format(labels))
+        #     logFile.write("values:                                          {}\n".format(values))
 
 
         #########################################################
@@ -697,13 +694,13 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                 update_plot(fig, ax, x_data, y_data, unit=unit, legend_ax=legend_ax)
             
         line_to_write = separator.join([str(x) for x in [time_stamp] + [time_s] + curr + volt + temp + labels])
-        if do_verbose:
-            logFile.write("Timestamp:                                       {}\n".format(time_stamp))
-            logFile.write("Time:                                            {}\n".format(time_s))
-            logFile.write("Current:                                         {}\n".format(curr))
-            logFile.write("Voltage:                                         {}\n".format(volt))
-            logFile.write("Temperature:                                     {}\n".format(temp))
-            logFile.write("Line to be written to {}:\n\t{}\n".format(outFilename, line_to_write))
+        # if do_verbose:
+        #     logFile.write("Timestamp:                                       {}\n".format(time_stamp))
+        #     logFile.write("Time:                                            {}\n".format(time_s))
+        #     logFile.write("Current:                                         {}\n".format(curr))
+        #     logFile.write("Voltage:                                         {}\n".format(volt))
+        #     logFile.write("Temperature:                                     {}\n".format(temp))
+        #     logFile.write("Line to be written to {}:\n\t{}\n".format(outFilename, line_to_write))
 
         if do_write and not corrupted_data:
             if (nev%slow_mode_factor!=0): # reduce the number of points to be written to file, from 400Hz to 400Hz/N
@@ -716,7 +713,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
             else:
                 nev_written += 1
                 if nev_written==1:
-                    print("First event written to file occurs at nev = ", nev)
+                    print(f"First event written to file occurs at nev = {nev}")
                 write_event_to_file(time_stamp=time_stamp,
                                     curr=curr,
                                     volt=volt,
@@ -726,17 +723,19 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                                     outFile=outFile,
                                     separator=separator,
                                     tree=tree)
-                if do_verbose:
-                    logFile.write("Good data, writing it to file.\n")
+                # if do_verbose:
+                #     logFile.write("Good data, writing it to file.\n")
         elif do_write and corrupted_data:
             corrupted_data = False
-            if do_verbose:
-                logFile.write("DATA CORRUPTED, NOT WRITING IT TO FILE!\n")
+            # if do_verbose:
+            #     logFile.write("DATA CORRUPTED, NOT WRITING IT TO FILE!\n")
         elif not do_write:
-            if do_verbose:
-                logFile.write("NOT WRITING IT TO FILE, AS REQUESTED!\n")
+            pass
+            # if do_verbose:
+                # logFile.write("NOT WRITING IT TO FILE, AS REQUESTED!\n")
         if do_verbose:
-            logFile.write("--------------------------------------------------")
+            pass
+            # logFile.write("--------------------------------------------------")
 
         nev += 1
         if nev%10000==0:
@@ -766,8 +765,22 @@ print(f"total number of written events:              {nev_written}")
 print(f"total number of non-matching events:         {nev_notmatching}")
 print(f"total number of error events:                {nev_error}")
 print(f"total time elapsed:                          {time.time()-t0}")
+
+if do_write:
+    if do_verbose:
+        logFile.write(f"time_flag has changed:                       {count_time_flip}\n")
+        logFile.write(f"total number in while loop:                  {nev_while}\n")
+        logFile.write(f"total number of good events:                 {nev}\n")
+        logFile.write(f"total number of skipped events:              {nev_skip}\n")
+        logFile.write(f"total number of written events:              {nev_written}\n")
+        logFile.write(f"total number of non-matching events:         {nev_notmatching}\n")
+        logFile.write(f"total number of error events:                {nev_error}\n")
+        logFile.write(f"total time elapsed:                          {time.time()-t0}\n")
+
 if do_write:
     print(f"Closing output file:                         {outFolder}/{outFilename}")
+    if do_verbose:
+        print(f"Log file is:                                 {logFolder}/{logFilename}")
     if root_format:
         outFile.Write()
         outFile.Close()
@@ -775,7 +788,9 @@ if do_write:
         outFile.close()
     size_MB     = round(os.path.getsize(f"{outFolder}/{outFilename}") / 1e6, 2)
     print(f"File size:                                   {size_MB} MB")
-
+    if do_verbose:
+        logFile.write("Closing output file: {}/{}\n".format(outFolder,outFilename))
+        logFile.write("File size: {} MB\n".format(size_MB))
 
 # Close log file
 if do_verbose:
