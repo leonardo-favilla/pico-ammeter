@@ -129,13 +129,13 @@ if do_write:
             logFile.write("Folder {} already exists\n".format(dataFolder))
         pass
     else:
+        os.makedirs(dataFolder)
         if do_verbose:
             if not os.path.exists(logFolder):
                 os.makedirs(logFolder)
             # Create log file
             logFile = open(os.path.join(logFolder, logFilename), "w")
             logFile.write("Creating folder {}\n".format(dataFolder))
-        os.makedirs(dataFolder)
 
     if os.path.exists(outFolder):
         if do_verbose:
