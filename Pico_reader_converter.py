@@ -16,14 +16,15 @@ from matplotlib.widgets import Button
 from matplotlib.gridspec import GridSpec
 import ROOT
 from array import array
-#from influxdb_client import InfluxDBClient, Point, WriteOptions
-
+# from influxdb_client import InfluxDBClient, Point, WriteOptions
+import tkinter as tk
+import threading
 
 plt.ion()
 
 # Arguments #
 parser = ArgumentParser(usage="python3 Pico_reader_converter.py -t <time_acq> -w -f ./new_folder") # -s if serial, -r if .root format, -l if live plot
-parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=10,                               type=int)
+parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=None,                             type=int)                                                                                                                
 parser.add_argument("-s",       "--serial",               dest="serial",              help="Enable serial connection",                                                                                                                          action="store_true")
 parser.add_argument("-w",       "--write",                dest="write",               help="Enable writing to file",                                                                                                                            action="store_true")
 parser.add_argument("-r",       "--root",                 dest="root",                help="Write in .root format, default in .txt",                                                                                                            action="store_true")
@@ -40,6 +41,10 @@ options = parser.parse_args()
 # Settings #
 pico                = "pico5"
 time_acq            = options.time_acq
+if time_acq is None:
+    print("Acquisition time not provided, running indefinitely")
+else:
+    print("Acquisition time provided: ", time_acq)
 do_serial           = options.serial
 do_write            = options.write
 root_format         = options.root
@@ -66,7 +71,7 @@ grafana             = options.grafana
 dt                  = 1e-4                                                                  # time interval corresponding to a single timestamp digit; dt is in seconds, example: dt = 0.1 msec = 1e-4 sec
 stop_execution      = False
 paused              = False
-
+trigger_stop        = False
 
 # InfluxDB settings
 INFLUXDB_URL    = "http://localhost:8086"
@@ -159,6 +164,19 @@ def connect_to_pico(do_serial, host, port, baud):
             logFile.write("Something went wrong with the connection to Pico: {}\n".format(error))
             logFile.write("Exiting...\n")
         sys.exit()
+
+
+
+def stop_command():
+    global trigger_stop
+    while True:
+        user_input = input("Type 'stop' to end the loop:\n")
+        if user_input.strip().lower() == "stop":
+            trigger_stop = True
+            break
+
+# Run the popup in a separate thread so it doesn't block the main loop
+threading.Thread(target=stop_command, daemon=True).start()
 
 
 channel_map = ["G3B","G3T","G2B","G2T","G1B","G1T","DRIFT"]
@@ -466,13 +484,20 @@ nev_written       = 0
 
 bytes             = bytearray()
 time_divider      = 1 # 1 if time in seconds, 1000 if time in milliseconds
-while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
+
+
+if time_acq is None:
+    loop_condition = not trigger_stop
+else:
+    loop_condition = (time.time() - t0 <= time_acq/time_divider)
+
+while loop_condition or (len(bytes)>0):
     # print("---------------------- Event number: ", nev, " ----------------------")
     # print("Time elapsed:                ", time.time()-t0)
     # if len(bytes):
         # print(f"bytes in memory {len(bytes)}:    {bytes}")
     # print(f"number of bytes in memory:       {len(bytes)}")
-    if stop_execution:  # Controlla se l'utente ha premuto il pulsante
+    if stop_execution or trigger_stop:  # Controlla se l'utente ha premuto il pulsante stop o se è stato digitato "stop" nella finestra popup
         print("\nExiting...\n")
         break
 
@@ -481,7 +506,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         continue
 
     nev_while += 1
-    if (time.time() - t0 <= time_acq/time_divider):
+    if loop_condition:
         try:
             corrupted_data = False
             if do_serial==False:
@@ -499,7 +524,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                 logFile.write("Something went wrong: {}\n".format(error))
                 logFile.write("--------------------------------------------------")
 
-    elif (time.time() - t0 > time_acq/time_divider) and s:
+    elif not loop_condition and s:
         print("Time elapsed: ", time.time()-t0)
         print("Acquisition time reached")
         print("Socket status before shutdown:", s.fileno())
@@ -747,6 +772,8 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         # print("not matching frame: ", data)
         nev_notmatching += 1
 
+if trigger_stop:
+    print("Loop has been stopped manually.")
 
 if grafana:
     write_api.flush()
