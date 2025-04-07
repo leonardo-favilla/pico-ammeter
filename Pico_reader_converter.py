@@ -43,8 +43,9 @@ pico                = "pico5"
 time_acq            = options.time_acq
 if time_acq is None:
     print("Acquisition time not provided, running indefinitely")
+    time_acq        = 1e40
 else:
-    print("Acquisition time provided: ", time_acq)
+    print(f"Acquisition time provided: {time_acq} seconds")
 do_serial           = options.serial
 do_write            = options.write
 root_format         = options.root
@@ -52,11 +53,12 @@ do_verbose          = options.verbose
 dataFolder          = options.folder
 outFolder           = "{}/{}".format(dataFolder, datetime.now().strftime("%d%m%y"))
 logFolder           = "{}/{}".format(outFolder, "logs")
+start_time          = datetime.now().strftime("%d%m%y_%H%M%S_%f")
 if root_format:
-    outFilename     = "{}.root".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))
+    outFilename     = "{}.root".format(start_time)
 else:
-    outFilename     = "{}.txt".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))          # f=microsecond
-logFilename         = "log_{}.txt".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))
+    outFilename     = "{}.txt".format(start_time)          # f=microsecond
+logFilename         = "log_{}.txt".format(start_time)
 frameTemplate       = struct.Struct(">5s cI ci ci ci ci ci ci ci 5s")                       # c=char, i=int, s=char[], ">" big endian (most significant byte first)
 separator           = ","
 convert_volt        = True
@@ -486,12 +488,7 @@ bytes             = bytearray()
 time_divider      = 1 # 1 if time in seconds, 1000 if time in milliseconds
 
 
-if time_acq is None:
-    loop_condition = not trigger_stop
-else:
-    loop_condition = (time.time() - t0 <= time_acq/time_divider)
-
-while loop_condition or (len(bytes)>0):
+while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
     # print("---------------------- Event number: ", nev, " ----------------------")
     # print("Time elapsed:                ", time.time()-t0)
     # if len(bytes):
@@ -506,7 +503,7 @@ while loop_condition or (len(bytes)>0):
         continue
 
     nev_while += 1
-    if loop_condition:
+    if (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0) or (not trigger_stop):
         try:
             corrupted_data = False
             if do_serial==False:
@@ -524,7 +521,7 @@ while loop_condition or (len(bytes)>0):
                 logFile.write("Something went wrong: {}\n".format(error))
                 logFile.write("--------------------------------------------------")
 
-    elif not loop_condition and s:
+    elif not ((time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0) or (not trigger_stop)) and s:
         print("Time elapsed: ", time.time()-t0)
         print("Acquisition time reached")
         print("Socket status before shutdown:", s.fileno())
@@ -774,7 +771,6 @@ while loop_condition or (len(bytes)>0):
 
 if trigger_stop:
     print("Loop has been stopped manually.")
-
 if grafana:
     write_api.flush()
     write_api.close()
@@ -785,7 +781,9 @@ if live_plot:
     plt.show()
 
 
+end_time = datetime.now().strftime("%d%m%y_%H%M%S_%f")
 # Close output file
+print(f"Start Time (local) (DDMMYY_HHMMSS_mus):      {start_time}")
 print(f"time_flag has changed:                       {count_time_flip}")
 print(f"total number in while loop:                  {nev_while}")
 print(f"total number of good events:                 {nev}")
@@ -793,10 +791,12 @@ print(f"total number of skipped events:              {nev_skip}")
 print(f"total number of written events:              {nev_written}")
 print(f"total number of non-matching events:         {nev_notmatching}")
 print(f"total number of error events:                {nev_error}")
+print(f"End Time (local) (DDMMYY_HHMMSS_mus):        {end_time}")
 print(f"total time elapsed:                          {time.time()-t0}")
 
 if do_write:
     if do_verbose:
+        logFile.write(f"Start Time (local) (DDMMYY_HHMMSS_mus):      {start_time}\n")
         logFile.write(f"time_flag has changed:                       {count_time_flip}\n")
         logFile.write(f"total number in while loop:                  {nev_while}\n")
         logFile.write(f"total number of good events:                 {nev}\n")
@@ -804,6 +804,7 @@ if do_write:
         logFile.write(f"total number of written events:              {nev_written}\n")
         logFile.write(f"total number of non-matching events:         {nev_notmatching}\n")
         logFile.write(f"total number of error events:                {nev_error}\n")
+        logFile.write(f"End Time (local) (DDMMYY_HHMMSS_mus):        {end_time}\n")
         logFile.write(f"total time elapsed:                          {time.time()-t0}\n")
 
 if do_write:
