@@ -16,7 +16,7 @@ from matplotlib.widgets import Button
 from matplotlib.gridspec import GridSpec
 import ROOT
 from array import array
-# from influxdb_client import InfluxDBClient, Point, WriteOptions
+from influxdb_client import InfluxDBClient, Point, WriteOptions
 import tkinter as tk
 import threading
 
@@ -76,10 +76,10 @@ paused              = False
 trigger_stop        = False
 
 # InfluxDB settings
-INFLUXDB_URL    = "http://localhost:8086"
-INFLUXDB_TOKEN  = "buP3vnHzoXz-WZMPaGrlgDjXpKlyICtwSUkyDYA4ixqM1gMfXYdsuvMM0n4FWttxTYOMJwWKP7wYfzbaJQsmng=="  # Replace with your actual token
-INFLUXDB_ORG    = "organization"
-INFLUXDB_BUCKET = "bucket"
+INFLUXDB_URL    = "http://gem904bigscreens:8086"
+INFLUXDB_TOKEN  = "mDg5QyXVh3DxQcxdFtEqnPDwaiq4N_Vt5TLqJCx2c2nsl1Kuyhj8wiF0agLWgvkLsDevjBXpuDKUR1Zyms5DsA=="  # Replace with your actual token
+INFLUXDB_ORG    = "CMS GEM project"
+INFLUXDB_BUCKET = "cms-gem-ge21-magnet-test"
 
 
 
@@ -771,17 +771,13 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
 
 if trigger_stop:
     print("Loop has been stopped manually.")
-if grafana:
-    write_api.flush()
-    write_api.close()
-    client.close()
+end_time = datetime.now().strftime("%d%m%y_%H%M%S_%f")
+
 
 
 if live_plot:
     plt.show()
 
-
-end_time = datetime.now().strftime("%d%m%y_%H%M%S_%f")
 # Close output file
 print(f"Start Time (local) (DDMMYY_HHMMSS_mus):      {start_time}")
 print(f"time_flag has changed:                       {count_time_flip}")
@@ -821,7 +817,11 @@ if do_write:
     if do_verbose:
         logFile.write("Closing output file: {}/{}\n".format(outFolder,outFilename))
         logFile.write("File size: {} MB\n".format(size_MB))
-
+# close influxdb #
+if grafana:
+    write_api.flush()
+    write_api.close()
+    client.close()
 # Close log file
 if do_verbose:
     logFile.write("Closing log file\n")
