@@ -658,7 +658,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
 
 
             # point = Point("current_measurement").tag("channel", "G3B").field("current", curr[0]).time(exact_time_s, write_precision="s")
-            if nev%10 == 0:
+            if nev%40 == 0:
                 # point_I = Point("current_measurement").field("I_G3B", curr[0]).field("I_G3T", curr[1]).field("I_G2B", curr[2]).field("I_G2T", curr[3]).field("I_G1B", curr[4]).field("I_G1T", curr[5]).field("I_DRIFT", curr[6]).time(exact_time_s, write_precision="s")
                 point_I = Point("current_measurement").field("I_G3B", curr[0]).field("I_G3T", curr[1]).field("I_G2B", curr[2]).field("I_G2T", curr[3]).field("I_G1B", curr[4]).field("I_G1T", curr[5]).field("I_DRIFT", curr[6]).time(exact_time_ms, write_precision="ms")
 
