@@ -76,11 +76,10 @@ paused              = False
 trigger_stop        = False
 
 # InfluxDB settings
-INFLUXDB_URL    = "http://gem904bigscreens:8086"
-INFLUXDB_TOKEN  = "mDg5QyXVh3DxQcxdFtEqnPDwaiq4N_Vt5TLqJCx2c2nsl1Kuyhj8wiF0agLWgvkLsDevjBXpuDKUR1Zyms5DsA=="  # Replace with your actual token
-INFLUXDB_ORG    = "CMS GEM project"
-INFLUXDB_BUCKET = "cms-gem-ge21-magnet-test"
-
+INFLUXDB_URL    = "example"
+INFLUXDB_TOKEN  = "example"
+INFLUXDB_ORG    = "-"          
+INFLUXDB_BUCKET = "user:password"
 
 
 # Dictionaries with calibration parameters #
@@ -452,7 +451,7 @@ def update_plot(fig, ax, x_data, y_data, unit, legend_ax):
 
 
 def send_to_influxdb(url, token, org, bucket, time_stamp, measurement_name, fields):
-    client      = InfluxDBClient(url=url, token=token, org=org)
+    client      = InfluxDBClient(url=url, token=token, org=org, verify_ssl=True, ssl_ca_cert="/etc/ssl/certs/CERN-bundle.pem")
     write_api   = client.write_api(write_options=WriteOptions(batch_size=1))
 
     # Create a single InfluxDB point with multiple fields (one per channel)
