@@ -35,7 +35,7 @@ parser.add_argument(            "--grafana",              dest="grafana",       
 options = parser.parse_args()
 
 # Settings #
-pico                = "pico5"
+pico                = "pico3"
 time_acq            = options.time_acq
 do_serial           = options.serial
 do_write            = options.write
@@ -84,7 +84,7 @@ elif pico == "pico4":
 elif pico == "pico3":
     with open("./calibrations/pico5/pico5_Calibration_Voltage.json","r") as file:
         CalVoltage = json.load(file)
-    with open("./calibrations/pico5/pico5_Calibration_Current.json","r") as file:
+    with open("./calibrations/pico3/pico3_Calibration_Current.json","r") as file:
         CalCurrent = json.load(file)
 
 # Connection Configuration #
@@ -175,8 +175,10 @@ def correct_curr(values, CalCurrent, labels):
             corr_val.append(values[i])
         elif labels[i] == b'I' :
             corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
+            #corr_val.append()
         elif labels[i] == b'i' :
             corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+            #corr_val.append()
         else:
             corr_val.append(values[i])
     return corr_val

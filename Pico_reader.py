@@ -84,7 +84,7 @@ def connect_to_pico(do_serial, host, port, baud):
         if do_verbose:
             logFile.write("Connection to Pico established\n")
         return s
-    
+
     except Exception as error:
         if do_verbose:
             logFile.write("Something went wrong with the connection to Pico: {}\n".format(error))
@@ -159,7 +159,7 @@ while time.time() - t0 <= time_acq:
 
             line_to_write = separator.join([str(x) for x in [time_stamp] + curr + volt + temp + labels])
             last_time_flag, last_time_stamp = time_flag, time_stamp
-            #print(line_to_write)
+            print(line_to_write)
             if do_verbose:
                 logFile.write("Timestamp:                                       {}\n".format(time_stamp))
                 logFile.write("Current:                                         {}\n".format(curr))
