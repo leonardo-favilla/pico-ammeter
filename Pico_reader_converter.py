@@ -104,7 +104,7 @@ else:
     elif pico == "pico5":
         hostName    = "gem-pico05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
-        hostName    = ""
+        hostName    = "gem-pico3" #admin=admin, password= PASSWORD
     portNumber      = 23
     baudrate        = None
 
@@ -165,21 +165,36 @@ channel_map = ["G3B","G3T","G2B","G2T","G1B","G1T","DRIFT"]
 def correct_volt(values, CalVoltage):
     # values goes from G3B to DRIFT
     corr_val = []
-    for i, ch in enumerate(channel_map):
-        corr_val.append(values[i] * CalVoltage[ch]["calFit"]["m"][0] + CalVoltage[ch]["calFit"]["q"][0])
+    if pico == "pico5" or pico == "pico4":
+        for i, ch in enumerate(channel_map):
+            corr_val.append(values[i] * CalVoltage[ch]["calFit"]["m"][0] + CalVoltage[ch]["calFit"]["q"][0])
+    elif(pico == "pico3"):
+        for i, ch in enumerate(channel_map):
+            corr_val.append(values[i]* CalVoltage[ch]["Voltage"]["m"]+CalVoltage[ch]["Voltage"]["q"])
     return corr_val
 
 def correct_curr(values, CalCurrent, labels):
     corr_val = []
-    for i, ch in enumerate(channel_map):
-        if not ch in CalCurrent:
-            corr_val.append(values[i])
-        elif labels[i] == b'I' :
-            corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
-        elif labels[i] == b'i' :
-            corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
-        else:
-            corr_val.append(values[i])
+    if (pico == "pico5" or pico == "pico4"): 
+        for i, ch in enumerate(channel_map):
+            if not ch in CalCurrent:
+                corr_val.append(values[i])
+            elif labels[i] == b'I' :
+                corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
+            elif labels[i] == b'i' :
+                corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+            else:
+                corr_val.append(values[i])
+    elif(pico == "pico3"):
+        for i, ch in enumerate(channel_map):
+            if not ch in CalCurrent:
+                corr_val.append(values[i])
+            elif labels[i] == b'I' :
+                corr_val.append(values[i] * CalCurrent[ch]["I"]["m"] + CalCurrent[ch]["I"]["q"])
+            elif labels[i] == b'i' :
+                corr_val.append(values[i] * CalCurrent[ch]["i"]["m"]+ CalCurrent[ch]["i"]["q"])
+            else:
+                corr_val.append(values[i])
     return corr_val
 
 def correct_temp(values):
