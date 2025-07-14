@@ -104,7 +104,7 @@ else:
     elif pico == "pico5":
         hostName    = "gem-pico05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
-        hostName    = "gem-pico03" #admin=admin, password= PASSWORD
+        hostName    = "GEM-PICO03--CMS" #admin=admin, password= PASSWORD
     portNumber      = 23
     baudrate        = None
 
