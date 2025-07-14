@@ -104,7 +104,7 @@ else:
     elif pico == "pico5":
         hostName    = "gem-pico05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
-        hostName    = "gem-pico3" #admin=admin, password= PASSWORD
+        hostName    = "gem-pico03" #admin=admin, password= PASSWORD
     portNumber      = 23
     baudrate        = None
 
@@ -185,7 +185,7 @@ def correct_curr(values, CalCurrent, labels):
                 corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
             else:
                 corr_val.append(values[i])
-    elif(pico == "pico3"):
+    elif (pico == "pico3"):
         for i, ch in enumerate(channel_map):
             if not ch in CalCurrent:
                 corr_val.append(values[i])
