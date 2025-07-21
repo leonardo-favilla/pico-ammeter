@@ -1,0 +1,64 @@
+---------------------- Connected to PICO ----------------------
+Writing data to file /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_145650_423405.root
+First event written to file occurs at nev =  13
+Time elapsed:              25.380638122558594
+Number of good events:     10000
+Time elapsed:              51.4037606716156
+Number of good events:     20000
+time_flag has changed:                       0
+total number in while loop:                  29220
+total number of good events:                 29218
+total number of skipped events:              293
+total number of written events:              28912
+total number of non-matching events:         0
+total number of error events:                0
+total time elapsed:                          75.0017580986023
+Closing output file:                         /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_145650_423405.root
+---------------------- Connected to PICO ----------------------
+Writing data to file /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_145808_058029.root
+First event written to file occurs at nev =  87
+Time elapsed:              25.37040090560913
+Number of good events:     10000
+Time elapsed:              50.97150373458862
+Number of good events:     20000
+time_flag has changed:                       0
+total number in while loop:                  29386
+total number of good events:                 29386
+total number of skipped events:              293
+total number of written events:              29006
+total number of non-matching events:         0
+total number of error events:                0
+total time elapsed:                          75.00059986114502
+Closing output file:                         /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_145808_058029.root
+---------------------- Connected to PICO ----------------------
+Writing data to file /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_145926_266799.root
+First event written to file occurs at nev =  38
+Time elapsed:              25.3629310131073
+Number of good events:     10000
+Time elapsed:              50.96686506271362
+Number of good events:     20000
+time_flag has changed:                       0
+total number in while loop:                  29390
+total number of good events:                 29390
+total number of skipped events:              294
+total number of written events:              29058
+total number of non-matching events:         0
+total number of error events:                0
+total time elapsed:                          75.00219774246216
+Closing output file:                         /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_145926_266799.root
+---------------------- Connected to PICO ----------------------
+Writing data to file /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_150044_352999.root
+First event written to file occurs at nev =  34
+Time elapsed:              25.22876787185669
+Number of good events:     10000
+Time elapsed:              50.82993197441101
+Number of good events:     20000
+time_flag has changed:                       0
+total number in while loop:                  29442
+total number of good events:                 29442
+total number of skipped events:              295
+total number of written events:              29113
+total number of non-matching events:         0
+total number of error events:                0
+total time elapsed:                          75.00096416473389
+Closing output file:                         /eos/user/l/lfavilla/GEM/MagnetTest3_Apr2025/picoData/260325/260325_150044_352999.root

@@ -11,16 +11,24 @@ import serial
 import json
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from matplotlib.ticker import EngFormatter
+from matplotlib.widgets import Button
+from matplotlib.gridspec import GridSpec
 import ROOT
 from array import array
 from influxdb_client import InfluxDBClient, Point, WriteOptions
-
+import tkinter as tk
+import threading
 
 plt.ion()
 
 # Arguments #
 parser = ArgumentParser(usage="python3 Pico_reader_converter.py -t <time_acq> -w -f ./new_folder") # -s if serial, -r if .root format, -l if live plot
+<<<<<<< HEAD
 parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=10,                               type=int)
+=======
+parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=None,                             type=int)                                                                                                                
+>>>>>>> db6fa75a108380c9e13899210e7fca69da241f0d
 parser.add_argument("-s",       "--serial",               dest="serial",              help="Enable serial connection",                                                                                                                          action="store_true")
 parser.add_argument("-w",       "--write",                dest="write",               help="Enable writing to file",                                                                                                                            action="store_true")
 parser.add_argument("-r",       "--root",                 dest="root",                help="Write in .root format, default in .txt",                                                                                                            action="store_true")
@@ -29,7 +37,7 @@ parser.add_argument("-v",       "--verbose",              dest="verbose",       
 parser.add_argument("-l",       "--live_plot",            dest="live_plot",           help="Enable live plot",                                                                                                                                  action="store_true")
 parser.add_argument(            "--voltage",              dest="voltage",             help="Enable live voltage plot",                                                                                                                          action="store_true")
 parser.add_argument(            "--current",              dest="current",             help="Enable live current plot",                                                                                                                          action="store_true")
-parser.add_argument(            "--ch",                   dest="ch",                  help="select channel to plot, default all channel are plotted",                                       default="G3B_G3T_G2B_G2T_G1B_G1T_DRIFT",  type=str)
+parser.add_argument(            "--ch",                   dest="ch",                  help="select channel to plot, default all channel are plotted",                                       default="DRIFT_G1T_G1B_G2T_G2B_G3T_G3B",  type=str)
 parser.add_argument("-slow",    "--slow_mode_factor",     dest="slow_mode_factor",    help="Reduce writing rate by factor N provided by user, i.e. from 400Hz to 400Hz/N",                  default=1,                                type=int)
 parser.add_argument(            "--grafana",              dest="grafana",             help="Enable writing to InfluxDB",                                                                                                                        action="store_true")
 options = parser.parse_args()
@@ -37,6 +45,11 @@ options = parser.parse_args()
 # Settings #
 pico                = "pico5"
 time_acq            = options.time_acq
+if time_acq is None:
+    print("Acquisition time not provided, running indefinitely")
+    time_acq        = 1e40
+else:
+    print(f"Acquisition time provided: {time_acq} seconds")
 do_serial           = options.serial
 do_write            = options.write
 root_format         = options.root
@@ -44,11 +57,12 @@ do_verbose          = options.verbose
 dataFolder          = options.folder
 outFolder           = "{}/{}".format(dataFolder, datetime.now().strftime("%d%m%y"))
 logFolder           = "{}/{}".format(outFolder, "logs")
+start_time          = datetime.now().strftime("%d%m%y_%H%M%S_%f")
 if root_format:
-    outFilename     = "{}.root".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))
+    outFilename     = "{}.root".format(start_time)
 else:
-    outFilename     = "{}.txt".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))          # f=microsecond
-logFilename         = "log_{}.txt".format(datetime.now().strftime("%d%m%y_%H%M%S_%f"))
+    outFilename     = "{}.txt".format(start_time)          # f=microsecond
+logFilename         = "log_{}.txt".format(start_time)
 frameTemplate       = struct.Struct(">5s cI ci ci ci ci ci ci ci 5s")                       # c=char, i=int, s=char[], ">" big endian (most significant byte first)
 separator           = ","
 convert_volt        = True
@@ -61,13 +75,15 @@ channels_to_plot    = options.ch.split("_")
 slow_mode_factor    = options.slow_mode_factor
 grafana             = options.grafana
 dt                  = 1e-4                                                                  # time interval corresponding to a single timestamp digit; dt is in seconds, example: dt = 0.1 msec = 1e-4 sec
+stop_execution      = False
+paused              = False
+trigger_stop        = False
 
 # InfluxDB settings
-INFLUXDB_URL    = "http://localhost:8086"
-INFLUXDB_TOKEN  = "buP3vnHzoXz-WZMPaGrlgDjXpKlyICtwSUkyDYA4ixqM1gMfXYdsuvMM0n4FWttxTYOMJwWKP7wYfzbaJQsmng=="  # Replace with your actual token
-INFLUXDB_ORG    = "organization"
-INFLUXDB_BUCKET = "bucket"
-
+INFLUXDB_URL    = "example"
+INFLUXDB_TOKEN  = "example"
+INFLUXDB_ORG    = "-"          
+INFLUXDB_BUCKET = "user:password"
 
 
 # Dictionaries with calibration parameters #
@@ -99,11 +115,11 @@ if do_serial:
     baudrate        = 2_000_000
 else:
     if pico == "pico4":
-        hostName    = "picouart04.na.infn.it" # admin=admin, password=PASSWORD
+        hostName    = "" # admin=admin, password=PASSWORD
     elif pico == "pico5":
-        hostName    = "picouart05.na.infn.it" # admin=admin, password=PASSWORD
+        hostName    = "GEM-PICO05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
-        hostName    = "picouart03.na.infn.it"
+        hostName    = ""
     portNumber      = 23
     baudrate        = None
 
@@ -114,19 +130,17 @@ if do_write:
             if not os.path.exists(logFolder):
                 os.makedirs(logFolder)
             # Create log file
-            print("Creating log file {}/{}".format(logFolder, logFilename))
             logFile = open(os.path.join(logFolder, logFilename), "w")
             logFile.write("Folder {} already exists\n".format(dataFolder))
         pass
     else:
+        os.makedirs(dataFolder)
         if do_verbose:
             if not os.path.exists(logFolder):
                 os.makedirs(logFolder)
             # Create log file
-            print("Creating log file {}/{}".format(logFolder, logFilename))
             logFile = open(os.path.join(logFolder, logFilename), "w")
             logFile.write("Creating folder {}\n".format(dataFolder))
-        os.makedirs(dataFolder)
 
     if os.path.exists(outFolder):
         if do_verbose:
@@ -136,8 +150,6 @@ if do_write:
         if do_verbose:
             logFile.write("Creating folder {}\n".format(outFolder))
         os.makedirs(outFolder)
-
-
 
 # UTILS #
 def connect_to_pico(do_serial, host, port, baud):
@@ -159,6 +171,19 @@ def connect_to_pico(do_serial, host, port, baud):
         sys.exit()
 
 
+
+def stop_command():
+    global trigger_stop
+    while True:
+        user_input = input("Type 'stop' to end the loop:\n")
+        if user_input.strip().lower() == "stop":
+            trigger_stop = True
+            break
+
+# Run the popup in a separate thread so it doesn't block the main loop
+threading.Thread(target=stop_command, daemon=True).start()
+
+
 channel_map = ["G3B","G3T","G2B","G2T","G1B","G1T","DRIFT"]
 
 def correct_volt(values, CalVoltage):
@@ -176,7 +201,10 @@ def correct_curr(values, CalCurrent, labels):
         elif labels[i] == b'I' :
             corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
         elif labels[i] == b'i' :
-            corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+            # corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+            with open("./calibrations/pico5/Calibration_no_FFT+1nA.json","r") as file:
+                CalCurrent_nA = json.load(file)
+            corr_val.append(values[i] * CalCurrent_nA[ch]["m"] + CalCurrent_nA[ch]["q"])
         else:
             corr_val.append(values[i])
     return corr_val
@@ -230,9 +258,10 @@ def write_event_to_file(time_stamp, curr, volt, temp, labels, root_format, outFi
 s = connect_to_pico(do_serial=do_serial, host=hostName, port=portNumber, baud=baudrate)  # connect to the server
 if s:
     print("---------------------- Connected to PICO ----------------------")
-    if do_verbose:
-        logFile.write("Writing data to file {}/{}".format(outFolder, outFilename))
     if do_write:
+        if do_verbose:
+            print(f"Creating log file {logFolder}/{logFilename}")
+            logFile.write("Writing data to file {}/{}\n".format(outFolder, outFilename))
         print("Writing data to file {}/{}".format(outFolder, outFilename))
         if root_format:
             outFile             = ROOT.TFile("{}/{}".format(outFolder, outFilename), "RECREATE")
@@ -299,8 +328,8 @@ else:
     print("Connection to PICO failed")
     sys.exit()
 
-if do_verbose:
-    logFile.write("--------------------------------------------------")
+# if do_verbose:
+#     logFile.write("--------------------------------------------------")
 t0      = time.time()
 curr    = list(np.zeros(7))
 volt    = list(np.zeros(7))
@@ -310,81 +339,123 @@ temp    = list(np.zeros(7))
 
 # plotting
 if live_plot:
-    fig,ax = plt.subplots(figsize=(10,6))
-    ax.set_xlabel("Time")
+    
+    fig = plt.figure(figsize=(12, 6))
+    gs = GridSpec(1, 2, width_ratios=[4, 1], figure=fig)
+
+    ax = fig.add_subplot(gs[0])
+    ax.set_xlabel("Time", fontsize=12, weight='bold', labelpad=15)
     if voltage_plot: 
-        ax.set_ylabel("Voltage [V]")
+        ax.set_ylabel("Voltage [V]", fontsize=12, weight='bold', labelpad=20)
     if current_plot:
-        ax.set_ylabel("Current [A]")
+        ax.set_ylabel("Current [A]", fontsize=12, weight='bold', labelpad=20)
     ax.grid(True)
     x_data = []
     y_data = {ch: [] for ch in channels_to_plot}
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])  # Shrink current axis by 20%    
     
+    ax.set_title("PICO5", fontsize=20)
+    cms_text = ax.text(0.15, 0.91, 'CMS', weight='bold', fontsize=16, transform=fig.transFigure)
 
-def update_plot(fig, ax, x_data, y_data, unit):
-    image = False
-
-    if image:
-        img = plt.imread("INFN.jpg") 
-        x0, y0 = ax.transData.transform((1.01,0.7))
-        ax.figure.figimage(img, x0, y0, alpha=0.5)
+    legend_ax = fig.add_subplot(gs[1])
+    legend_ax.axis("off")
     
-    plt.title("PICO",size=20)
-    if unit=="V":
-        label = "V" 
-        ax.set_ylabel("Voltage")
-    elif unit=="A":
-        label = "i" 
-        ax.set_ylabel("Current")
-    ax.set_xlabel("Timestamp")
-    ax.yaxis.set_major_formatter(ticker.EngFormatter(unit=unit))
+    ### STOP BUTTON ###
+    button_ax = fig.add_axes([0.8, 0.15, 0.07, 0.06])  # Adjusted Button position
+    stop_button = Button(button_ax, "STOP", color='red', hovercolor='lightcoral')
+    stop_button.label.set_color('white')
+    stop_button.label.set_fontsize(13)
+    stop_button.label.set_weight('bold')
 
-    style = ticker.EngFormatter(unit=unit, places = 2, sep=" ") # formatter for the measurements in the legend 
-    g = lambda x,pos : "{}".format(style(x,pos)) 
+    def stop(event):
+        global stop_execution
+        stop_execution = True
+        print("Execution stopped by the user.")
+
+    stop_button.on_clicked(stop)
+
+    ### PAUSE BUTTON ###
+    pause_button_ax = fig.add_axes([0.8, 0.05, 0.07, 0.06])
+    pause_button = Button(pause_button_ax, 'PAUSE', color='blue', hovercolor='lightblue')
+    pause_button.label.set_color('white')
+    pause_button.label.set_fontsize(13)
+    pause_button.label.set_weight('bold')
+    
+    def toggle_pause(event):        
+        global paused
+        paused = not paused
+    
+    pause_button.on_clicked(toggle_pause)
+
+    #### SAVE BUTTON ####
+    save_button_ax = fig.add_axes([0.8, 0.25, 0.07, 0.06])  # Posizione del pulsante
+    save_button = Button(save_button_ax, 'SAVE', color='green', hovercolor='lightgreen')
+    save_button.label.set_color('white')
+    save_button.label.set_fontsize(13)
+    save_button.label.set_weight('bold')
+
+    def save_screenshot(event):
+        screenshot_folder = "./screenshots"
+        if not os.path.exists(screenshot_folder):
+            os.makedirs(screenshot_folder)  
+
+        utc_time = datetime.utcfromtimestamp(t0 + time_stamp * dt)  # Convert to UTC time
+        screenshot_filename = os.path.join(
+            screenshot_folder,
+            f"screenshot_{utc_time.strftime('%Y-%m-%d_%H-%M-%S')}.png"
+        )
+
+        fig.savefig(screenshot_filename, dpi=300)
+        print(f"Screenshot saved: {screenshot_filename}")
+
+    save_button.on_clicked(save_screenshot)
+
+def update_plot(fig, ax, x_data, y_data, unit, legend_ax):
+    style = ticker.EngFormatter(unit=unit, places=2, sep=" ")  
+    g = lambda x, pos: "{}".format(style(x, pos))
     fmt = ticker.FuncFormatter(g)
-    
-    for ch in channels_to_plot:
-        if len(y_data[ch])>=100: 
-            y_data[ch]  = y_data[ch][-100:]
-            x_data      = x_data[-100:]
 
-        # ax.plot(x_data, y_data[ch], label= ch+"      "+r""+label+" = %.2f $nA$" % (y_data[ch][-1]*10**9)) # for current always in nA
-        last_val =  y_data[ch][-1]
-        ax.plot(x_data, y_data[ch], label=ch+"    {}".format(fmt(last_val)))
+    for ch in channels_to_plot:
+        if len(y_data[ch]) >= 100: 
+            y_data[ch] = y_data[ch][-100:]
+            x_data = x_data[-100:]
+
+        if len(ax.lines) > channels_to_plot.index(ch):
+            line = ax.lines[channels_to_plot.index(ch)]
+            line.set_xdata(x_data)
+            line.set_ydata(y_data[ch])
+            
+            last_value = y_data[ch][-1] if y_data[ch] else 0
+            #label = f"{ch}: {last_value * 1e9:.2f} nA"
+            label = f"{ch}: {fmt(last_value, None)}"
+            line.set_label(label)
+        else:
+            last_value = y_data[ch][-1] if y_data[ch] else 0
+            #label = f"{ch}: {last_value * 1e9:.2f} nA"
+            label = f"{ch}: {fmt(last_value, None)}"
+            ax.plot(x_data, y_data[ch], label=label)
+
+    legend_ax.clear()
+    legend_ax.axis("off")
+    handles, labels = ax.get_legend_handles_labels()  
+    legend = legend_ax.legend(handles, labels, loc='center', frameon=True, fontsize=12)
+
+    for line in legend.get_lines():
+        line.set_linewidth(2.5)
     
-    
-    plt.legend(loc='center left', bbox_to_anchor=(1.01, 0.5), frameon = True) # Put a legend to the right of the current axis
-    # plt.text(0.15,0.91, 'CMS', weight='bold', fontsize=15, transform=plt.gcf().transFigure)
-    
-    """
-    if unit=="A":
-        plt.text(0.875, 0.385, r"$I$ = %.2f $nA$" % (y_data["DRIFT"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.419, r"$I$ = %.2f $nA$" % (y_data["G1T"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4525, r"$I$ = %.2f $nA$" % (y_data["G1B"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4875, r"$I$ = %.2f $nA$" % (y_data["G2T"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.525, r"$I$ = %.2f $nA$" % (y_data["G2B"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.56, r"$I$ = %.2f $nA$" % (y_data["G3T"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.595, r"$I$ = %.2f $nA$" % (y_data["G3B"][-1]*10**9), fontsize=8, transform=plt.gcf().transFigure)
-    elif unit=="V":
-        plt.text(0.875, 0.385, r"$V$ = %.2f $V$" % (y_data["DRIFT"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.419, r"$V$ = %.2f $V$" % (y_data["G1T"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4525, r"$V$ = %.2f $V$" % (y_data["G1B"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.4875, r"$V$ = %.2f $V$" % (y_data["G2T"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.525, r"$V$ = %.2f $V$" % (y_data["G2B"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.56, r"$V$ = %.2f $V$" % (y_data["G3T"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-        plt.text(0.875, 0.595, r"$V$ = %.2f $V$" % (y_data["G3B"][-1]), fontsize=8, transform=plt.gcf().transFigure)
-    """
-    ax.grid(True, alpha=0.35)
+    legend.get_frame().set_facecolor('linen')
+    legend.get_frame().set_edgecolor('black')
+    legend.get_frame().set_alpha(0.8) 
+    legend.get_frame().set_boxstyle("round,pad=1")
+
+    ax.yaxis.set_major_formatter(style)
+    ax.relim()
+    ax.autoscale_view()
     plt.draw()
     plt.pause(0.001)
-    ax.cla()
-
 
 
 def send_to_influxdb(url, token, org, bucket, time_stamp, measurement_name, fields):
-    client      = InfluxDBClient(url=url, token=token, org=org)
+    client      = InfluxDBClient(url=url, token=token, org=org, verify_ssl=True, ssl_ca_cert="/etc/ssl/certs/CERN-bundle.pem")
     write_api   = client.write_api(write_options=WriteOptions(batch_size=1))
 
     # Create a single InfluxDB point with multiple fields (one per channel)
@@ -418,16 +489,24 @@ nev_written       = 0
 
 bytes             = bytearray()
 time_divider      = 1 # 1 if time in seconds, 1000 if time in milliseconds
+
+
 while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
     # print("---------------------- Event number: ", nev, " ----------------------")
     # print("Time elapsed:                ", time.time()-t0)
     # if len(bytes):
         # print(f"bytes in memory {len(bytes)}:    {bytes}")
     # print(f"number of bytes in memory:       {len(bytes)}")
+    if stop_execution or trigger_stop:  # Controlla se l'utente ha premuto il pulsante stop o se è stato digitato "stop" nella finestra popup
+        print("\nExiting...\n")
+        break
 
+    if paused:
+        plt.pause(0.1)
+        continue
 
     nev_while += 1
-    if (time.time() - t0 <= time_acq/time_divider):
+    if (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0) or (not trigger_stop):
         try:
             corrupted_data = False
             if do_serial==False:
@@ -445,7 +524,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                 logFile.write("Something went wrong: {}\n".format(error))
                 logFile.write("--------------------------------------------------")
 
-    elif (time.time() - t0 > time_acq/time_divider) and s:
+    elif not ((time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0) or (not trigger_stop)) and s:
         print("Time elapsed: ", time.time()-t0)
         print("Acquisition time reached")
         print("Socket status before shutdown:", s.fileno())
@@ -515,11 +594,11 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         values = [x for i, x in enumerate(line) if i % 2 != 0]  # get the values
         
 
-        if do_verbose:
-            logFile.write("Ev. number:                                      {}\n".format(nev))
-            logFile.write(str(line) + "\n")
-            logFile.write("labels:                                          {}\n".format(labels))
-            logFile.write("values:                                          {}\n".format(values))
+        # if do_verbose:
+        #     logFile.write("Ev. number:                                      {}\n".format(nev))
+        #     logFile.write(str(line) + "\n")
+        #     logFile.write("labels:                                          {}\n".format(labels))
+        #     logFile.write("values:                                          {}\n".format(values))
 
 
         #########################################################
@@ -582,7 +661,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
 
 
             # point = Point("current_measurement").tag("channel", "G3B").field("current", curr[0]).time(exact_time_s, write_precision="s")
-            if nev%10 == 0:
+            if nev%100 == 0:
                 # point_I = Point("current_measurement").field("I_G3B", curr[0]).field("I_G3T", curr[1]).field("I_G2B", curr[2]).field("I_G2T", curr[3]).field("I_G1B", curr[4]).field("I_G1T", curr[5]).field("I_DRIFT", curr[6]).time(exact_time_s, write_precision="s")
                 point_I = Point("current_measurement").field("I_G3B", curr[0]).field("I_G3T", curr[1]).field("I_G2B", curr[2]).field("I_G2T", curr[3]).field("I_G1B", curr[4]).field("I_G1T", curr[5]).field("I_DRIFT", curr[6]).time(exact_time_ms, write_precision="ms")
 
@@ -602,7 +681,7 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                 write_api.write(bucket=INFLUXDB_BUCKET, record=point_T)
 
             # send_to_influxdb(
-            #     url=INFLUXDB_URL,
+            #     url=INFLUXDB_URL,Is
             #     token=INFLUXDB_TOKEN,
             #     org=INFLUXDB_ORG,
             #     bucket=INFLUXDB_BUCKET,
@@ -637,16 +716,16 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                     for ch in channels_to_plot:
                         y_data[ch].append(curr[channel_map.index(ch)])
                 # print(len(x_data), len(y_data[ch]))
-                update_plot(fig, ax, x_data, y_data, unit=unit)
+                update_plot(fig, ax, x_data, y_data, unit=unit, legend_ax=legend_ax)
             
         line_to_write = separator.join([str(x) for x in [time_stamp] + [time_s] + curr + volt + temp + labels])
-        if do_verbose:
-            logFile.write("Timestamp:                                       {}\n".format(time_stamp))
-            logFile.write("Time:                                            {}\n".format(time_s))
-            logFile.write("Current:                                         {}\n".format(curr))
-            logFile.write("Voltage:                                         {}\n".format(volt))
-            logFile.write("Temperature:                                     {}\n".format(temp))
-            logFile.write("Line to be written to {}:\n\t{}\n".format(outFilename, line_to_write))
+        # if do_verbose:
+        #     logFile.write("Timestamp:                                       {}\n".format(time_stamp))
+        #     logFile.write("Time:                                            {}\n".format(time_s))
+        #     logFile.write("Current:                                         {}\n".format(curr))
+        #     logFile.write("Voltage:                                         {}\n".format(volt))
+        #     logFile.write("Temperature:                                     {}\n".format(temp))
+        #     logFile.write("Line to be written to {}:\n\t{}\n".format(outFilename, line_to_write))
 
         if do_write and not corrupted_data:
             if (nev%slow_mode_factor!=0): # reduce the number of points to be written to file, from 400Hz to 400Hz/N
@@ -659,7 +738,9 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
             else:
                 nev_written += 1
                 if nev_written==1:
-                    print("First event written to file occurs at nev = ", nev)
+                    print(f"First event written to file occurs at nev = {nev}")
+                    if do_verbose:
+                        logFile.write(f"First event written to file occurs at nev = {nev}\n")
                 write_event_to_file(time_stamp=time_stamp,
                                     curr=curr,
                                     volt=volt,
@@ -669,17 +750,19 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
                                     outFile=outFile,
                                     separator=separator,
                                     tree=tree)
-                if do_verbose:
-                    logFile.write("Good data, writing it to file.\n")
+                # if do_verbose:
+                #     logFile.write("Good data, writing it to file.\n")
         elif do_write and corrupted_data:
             corrupted_data = False
-            if do_verbose:
-                logFile.write("DATA CORRUPTED, NOT WRITING IT TO FILE!\n")
+            # if do_verbose:
+            #     logFile.write("DATA CORRUPTED, NOT WRITING IT TO FILE!\n")
         elif not do_write:
-            if do_verbose:
-                logFile.write("NOT WRITING IT TO FILE, AS REQUESTED!\n")
+            pass
+            # if do_verbose:
+                # logFile.write("NOT WRITING IT TO FILE, AS REQUESTED!\n")
         if do_verbose:
-            logFile.write("--------------------------------------------------")
+            pass
+            # logFile.write("--------------------------------------------------")
 
         nev += 1
         if nev%10000==0:
@@ -689,18 +772,17 @@ while (time.time() - t0 <= time_acq/time_divider) or (len(bytes)>0):
         # print("not matching frame: ", data)
         nev_notmatching += 1
 
+if trigger_stop:
+    print("Loop has been stopped manually.")
+end_time = datetime.now().strftime("%d%m%y_%H%M%S_%f")
 
-if grafana:
-    write_api.flush()
-    write_api.close()
-    client.close()
 
 
 if live_plot:
     plt.show()
 
-
 # Close output file
+print(f"Start Time (local) (DDMMYY_HHMMSS_mus):      {start_time}")
 print(f"time_flag has changed:                       {count_time_flip}")
 print(f"total number in while loop:                  {nev_while}")
 print(f"total number of good events:                 {nev}")
@@ -708,15 +790,41 @@ print(f"total number of skipped events:              {nev_skip}")
 print(f"total number of written events:              {nev_written}")
 print(f"total number of non-matching events:         {nev_notmatching}")
 print(f"total number of error events:                {nev_error}")
+print(f"End Time (local) (DDMMYY_HHMMSS_mus):        {end_time}")
 print(f"total time elapsed:                          {time.time()-t0}")
+
+if do_write:
+    if do_verbose:
+        logFile.write(f"Start Time (local) (DDMMYY_HHMMSS_mus):      {start_time}\n")
+        logFile.write(f"time_flag has changed:                       {count_time_flip}\n")
+        logFile.write(f"total number in while loop:                  {nev_while}\n")
+        logFile.write(f"total number of good events:                 {nev}\n")
+        logFile.write(f"total number of skipped events:              {nev_skip}\n")
+        logFile.write(f"total number of written events:              {nev_written}\n")
+        logFile.write(f"total number of non-matching events:         {nev_notmatching}\n")
+        logFile.write(f"total number of error events:                {nev_error}\n")
+        logFile.write(f"End Time (local) (DDMMYY_HHMMSS_mus):        {end_time}\n")
+        logFile.write(f"total time elapsed:                          {time.time()-t0}\n")
+
 if do_write:
     print(f"Closing output file:                         {outFolder}/{outFilename}")
+    if do_verbose:
+        print(f"Log file is:                                 {logFolder}/{logFilename}")
     if root_format:
         outFile.Write()
         outFile.Close()
     else:
         outFile.close()
-
+    size_MB     = round(os.path.getsize(f"{outFolder}/{outFilename}") / 1e6, 2)
+    print(f"File size:                                   {size_MB} MB")
+    if do_verbose:
+        logFile.write("Closing output file: {}/{}\n".format(outFolder,outFilename))
+        logFile.write("File size: {} MB\n".format(size_MB))
+# close influxdb #
+if grafana:
+    write_api.flush()
+    write_api.close()
+    client.close()
 # Close log file
 if do_verbose:
     logFile.write("Closing log file\n")

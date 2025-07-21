@@ -1,2 +1,8 @@
 *.root
+<<<<<<< HEAD
 *.log
+=======
+*.log
+*.txt
+*.png
+>>>>>>> db6fa75a108380c9e13899210e7fca69da241f0d
