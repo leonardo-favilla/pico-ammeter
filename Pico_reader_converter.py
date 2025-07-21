@@ -212,7 +212,7 @@ def correct_curr(values, CalCurrent, labels):
                 corr_val.append(values[i] * CalCurrent[ch]["I"]["m"] + CalCurrent[ch]["I"]["q"])
             elif labels[i] == b'i' :
                 # corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
-                corr_val.append(values[i] * CalCurrent[ch]["i"]["m"] + CalCurrent_nA[ch]["i"]["q"])
+                corr_val.append(values[i] * CalCurrent[ch]["i"]["m"] + CalCurrent[ch]["i"]["q"])
             else:
                 corr_val.append(values[i])             
     return corr_val
