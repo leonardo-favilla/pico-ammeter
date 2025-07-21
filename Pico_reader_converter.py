@@ -24,11 +24,8 @@ plt.ion()
 
 # Arguments #
 parser = ArgumentParser(usage="python3 Pico_reader_converter.py -t <time_acq> -w -f ./new_folder") # -s if serial, -r if .root format, -l if live plot
-<<<<<<< HEAD
-parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=10,                               type=int)
-=======
+#parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=10,                               type=int)
 parser.add_argument("-t",       "--time",                 dest="time_acq",            help="Acquisition time in seconds",                                                                   default=None,                             type=int)                                                                                                                
->>>>>>> db6fa75a108380c9e13899210e7fca69da241f0d
 parser.add_argument("-s",       "--serial",               dest="serial",              help="Enable serial connection",                                                                                                                          action="store_true")
 parser.add_argument("-w",       "--write",                dest="write",               help="Enable writing to file",                                                                                                                            action="store_true")
 parser.add_argument("-r",       "--root",                 dest="root",                help="Write in .root format, default in .txt",                                                                                                            action="store_true")
@@ -98,9 +95,9 @@ elif pico == "pico4":
     with open("./calibrations/pico4/pico4_Calibration_Current.json","r") as file:
         CalCurrent = json.load(file)
 elif pico == "pico3":
-    with open("./calibrations/pico5/pico5_Calibration_Voltage.json","r") as file:
+    with open("./calibrations/pico3/pico3_Calibration_Voltage.json","r") as file:
         CalVoltage = json.load(file)
-    with open("./calibrations/pico5/pico5_Calibration_Current.json","r") as file:
+    with open("./calibrations/pico3/pico3_Calibration_Current.json","r") as file:
         CalCurrent = json.load(file)
 
 # Connection Configuration #
@@ -119,7 +116,7 @@ else:
     elif pico == "pico5":
         hostName    = "GEM-PICO05" # admin=admin, password=PASSWORD
     elif pico == "pico3":
-        hostName    = ""
+        hostName    = "GEM-PICO03--CMS"
     portNumber      = 23
     baudrate        = None
 
@@ -190,23 +187,34 @@ def correct_volt(values, CalVoltage):
     # values goes from G3B to DRIFT
     corr_val = []
     for i, ch in enumerate(channel_map):
-        corr_val.append(values[i] * CalVoltage[ch]["calFit"]["m"][0] + CalVoltage[ch]["calFit"]["q"][0])
+        corr_val.append(values[i] * CalVoltage[ch]["Voltage"]["m"] + CalVoltage[ch]["Voltage"]["q"])
     return corr_val
 
 def correct_curr(values, CalCurrent, labels):
     corr_val = []
     for i, ch in enumerate(channel_map):
-        if not ch in CalCurrent:
-            corr_val.append(values[i])
-        elif labels[i] == b'I' :
-            corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
-        elif labels[i] == b'i' :
-            # corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
-            with open("./calibrations/pico5/Calibration_no_FFT+1nA.json","r") as file:
-                CalCurrent_nA = json.load(file)
-            corr_val.append(values[i] * CalCurrent_nA[ch]["m"] + CalCurrent_nA[ch]["q"])
-        else:
-            corr_val.append(values[i])
+        if (pico == "pico5" or pico == "pico4"):
+            if not ch in CalCurrent:
+                corr_val.append(values[i])
+            elif labels[i] == b'I' :
+                corr_val.append(values[i] * CalCurrent[ch]["calFit_I"]["m"][0] + CalCurrent[ch]["calFit_I"]["q"][0])
+            elif labels[i] == b'i' :
+                # corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+                with open("./calibrations/pico5/Calibration_no_FFT+1nA.json","r") as file:
+                    CalCurrent_nA = json.load(file)
+                corr_val.append(values[i] * CalCurrent_nA[ch]["m"] + CalCurrent_nA[ch]["q"])
+            else:
+                corr_val.append(values[i])
+        elif (pico == "pico3"):
+            if not ch in CalCurrent:
+                corr_val.append(values[i])
+            elif labels[i] == b'I' :
+                corr_val.append(values[i] * CalCurrent[ch]["I"]["m"] + CalCurrent[ch]["I"]["q"])
+            elif labels[i] == b'i' :
+                # corr_val.append(values[i] * CalCurrent[ch]["calFit_i"]["m"][0] + CalCurrent[ch]["calFit_i"]["q"][0])
+                corr_val.append(values[i] * CalCurrent[ch]["i"]["m"] + CalCurrent_nA[ch]["i"]["q"])
+            else:
+                corr_val.append(values[i])             
     return corr_val
 
 def correct_temp(values):
